@@ -57,6 +57,7 @@ class robo:
         self.gpio.setup(LENA, self.gpio.OUT)
         self.gpio.output(LIN1, self.gpio.HIGH)
         self.gpio.output(LIN2, self.gpio.LOW)
+        self.gpio.output(LENA, self.gpio.HIGH)
 
         self.pwm_r = self.gpio.PWM(RENA, 1000)
         self.pwm_l = self.gpio.PWM(LENA, 1000)
@@ -153,7 +154,27 @@ class robo:
 
         return points
 
-    def set_velocity(self, vl, vr):
+    def set_velocity(self, vl, vr,o_vl,o_vr):
+
+
+        if o_vr != vr:
+            if vr < 0:
+                vr = -vr
+                self.gpio.output(RIN2, self.gpio.HIGH)
+                self.gpio.output(RIN1, self.gpio.LOW)
+            else:
+                self.gpio.output(RIN1, self.gpio.HIGH)
+                self.gpio.output(RIN2, self.gpio.LOW)
+
+        if o_vl != vl:
+            if vl < 0:
+                vl = -vl
+                self.gpio.output(LIN2, self.gpio.HIGH)
+                self.gpio.output(LIN1, self.gpio.LOW)
+            else:
+                self.gpio.output(LIN1, self.gpio.HIGH)
+                self.gpio.output(LIN2, self.gpio.LOW)
+
         self.pwm_l.start(vl)
         self.pwm_r.start(vr)
 
