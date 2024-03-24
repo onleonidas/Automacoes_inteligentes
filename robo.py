@@ -15,9 +15,9 @@ class robo:
         self.gpio.setmode(self.gpio.BCM)
 
         self.threshold = 0.05
-        self.n_points = 7
+        self.n_points = 25
         self.calibre = 2.1
-        self.range = 2.1
+        self.range = 3.14
 
         self.right_encoder = Encoder(RENCA, RENCB)
         self.right_encoder.start()
@@ -41,7 +41,7 @@ class robo:
         self.laser.setlidaropt(ydlidar.LidarPropSingleChannel, True)
         self.laser.setlidaropt(ydlidar.LidarPropMaxAngle, 180.0)
         self.laser.setlidaropt(ydlidar.LidarPropMinAngle, -180.0)
-        self.laser.setlidaropt(ydlidar.LidarPropMaxRange, 16.0)
+        self.laser.setlidaropt(ydlidar.LidarPropMaxRange, 3.0)
         self.laser.setlidaropt(ydlidar.LidarPropMinRange, 0.12)
         self.laser.setlidaropt(ydlidar.LidarPropIntenstiy, False)
 
@@ -93,7 +93,6 @@ class robo:
                 self.left_encoder.data_collected()
 
             lidar_points = self.get_lidar()
-
             return rv, lv, lidar_points
 
     def get_lidar(self):
@@ -110,8 +109,9 @@ class robo:
                     range_ = self.scan.points[n].range
                     time_ = self.scan.stamp
 
-
+#                    print("antigo:", angle_)
                     angle_ = (angle_ + math.pi) % (2 * math.pi) - math.pi
+#                    print("novo:" , angle_)
                     if (angle_ >= -self.range and angle_ <= self.range):
                         scan_data.append(self.makeRow(time_, range_, angle_))
 
@@ -129,15 +129,33 @@ class robo:
 
     def make_points(self, df):
         alpha = 2 * self.range / (self.n_points - 1)
-        enu_points = ["-120", "-80", "-40", "0", "40", "80", "120"]
+        enu_points = ["-165", "-150", "-135", "-120", "-105", "-90", "-75", "-60", "-45", "-30", "-15", "0",
+                      "15", "30", "45", "60", "75", "90", "105", "120", "135", "150", "165", "180"]
         points = {
-            "120": 0,
-            "80": 0,
-            "40": 0,
+            "-165": 0,
+            "-150": 0,
+            "-135": 0,
+            "-120": 0,
+            "-105": 0,
+            "-90": 0,
+            "-75": 0,
+            "-60": 0,
+            "-45": 0,
+            "-30": 0,
+            "-15": 0,
             "0": 0,
-            "-40": 0,
-            "-80": 0,
-            "-120": 0
+            "15": 0,
+            "30": 0,
+            "45": 0,
+            "60": 0,
+            "75": 0,
+            "90": 0,
+            "105": 0,
+            "120": 0,
+            "135": 0,
+            "150": 0,
+            "165": 0,
+            "180": 0
         }
 
         for i in range(self.n_points):
@@ -145,19 +163,35 @@ class robo:
             angle = -self.range + i * alpha
             for j in df:
                 if j["ANGLE"] >= angle - self.threshold and j["ANGLE"] <= angle + self.threshold:
+#                    print(enu_points[i], j["DISTANCE"])
                     p.append(j["DISTANCE"])
-
             point = np.array(p).mean()
-            if np.isnan(point):
-                point = 0
-            points[enu_points[i]] = point
-
+            try:
+                points[enu_points[i]] = point
+            except:
+                continue
         return points
 
     def set_velocity(self, vl, vr,o_vl,o_vr):
+        sinal_nl=1
+        sinal_nr=1
+        sinal_or=1
+        sinal_ol=1
+
+        if vl < 0:
+            sinal_nl = -1
+        if vr < 0:
+            sinal_nr = -1
+        if o_vl < 0:
+            sinal_ol = -1
+        if o_vr < 0:
+            sinal_or = -1
 
 
-        if o_vr != vr:
+
+
+
+        if sinal_nr != sinal_or:
             if vr < 0:
                 vr = -vr
                 self.gpio.output(RIN2, self.gpio.HIGH)
@@ -165,8 +199,11 @@ class robo:
             else:
                 self.gpio.output(RIN1, self.gpio.HIGH)
                 self.gpio.output(RIN2, self.gpio.LOW)
+        else:
+            if vr < 0:
+                vr = -vr
 
-        if o_vl != vl:
+        if sinal_nl != sinal_ol:
             if vl < 0:
                 vl = -vl
                 self.gpio.output(LIN2, self.gpio.HIGH)
@@ -174,6 +211,10 @@ class robo:
             else:
                 self.gpio.output(LIN1, self.gpio.HIGH)
                 self.gpio.output(LIN2, self.gpio.LOW)
+        else:
+            if vl < 0:
+                vl = -vl
+
 
         self.pwm_l.start(vl)
         self.pwm_r.start(vr)
