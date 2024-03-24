@@ -1,98 +1,72 @@
-from robo import robo
+import time
 
+from robo import robo
 data_list = []
 
 
 D = 0.2185
 R = 0.0335
+MIN_VELOCITY = 55
+MAX_LINEAR_VELOCITY = 2.8*R
+MAX_ANGULAR_VELOCITY = 2.8*R/D
+velo_angular_roda = 6.33
+v_linear = 0.106
+v_angular = 0.4852
+u_max = (v_linear + v_angular*D)/2
 
-def find_velocity( dl, dr, dc, dll, drr):
-    vl, vr, v = 0, 0, 0
-    wl, wr, w = 0, 0, 0
-    sinal = 1
-    MAX_LINEAR_VELOCITY = 75
-    MAX_ANGULAR_VELOCITY = 25
+def find_velocity(points):
 
-    if abs(dll - drr) < 0.05:
-        MAX_LINEAR_VELOCITY = 75
-        MAX_ANGULAR_VELOCITY = 25
-    elif abs(dll - drr) < 0.2:
-        MAX_LINEAR_VELOCITY = 75 - 50*((0.2 - abs(dll - drr))/0.2)
-        MAX_ANGULAR_VELOCITY = 25 + 50*((abs(dll - drr))/0.2 )
+    print(points)
+
+    p45, pm45, p15, pm15, p90, pm90, p30, pm30,p0 = points["45"], points["-45"], points["15"], points["-15"],\
+        points["90"], points["-90"], points["30"], points["-30"],points["0"]
+
+    v = 55
+    ajuste_r = 1.2
+    curva_suave = 0.7
+    curva = 1
+
+    if p0 > 0.30 and p15 > 0.30 and pm15 > 0.30:
+        n_vl = v
+        n_vr = v
+        if p30 > 0.30 and pm30 > 30:
+            if p30 < pm30:
+                n_vl = v * curva_suave
+                n_vr = v
+            else:
+                n_vl = v
+                n_vr = v * curva_suave
     else:
-        MAX_LINEAR_VELOCITY = 25
-        MAX_ANGULAR_VELOCITY = 75
-
-
-    if dc < 0.15:
-        vr, vl = 0, 0
-    elif dc < 0.6:
-        v = (dc - 0.2)*MAX_LINEAR_VELOCITY
-        vr, vl = v, v
-    else:
-        vr, vl = MAX_LINEAR_VELOCITY,MAX_LINEAR_VELOCITY
-
-    delta = dr - dl
-
-    if abs(delta) > 0.5:
-        if abs(delta) > 5:
-            w = 0
+        if (p90+p45) > (pm90+pm45):
+            n_vl = v * curva
+            n_vr = -v * curva
         else:
-            w = MAX_ANGULAR_VELOCITY
+            n_vl = -v * curva
+            n_vr = v * curva
 
-    elif abs(delta) < 0.05:
-        w = 0
-
-    else:
-        w = abs(delta)*MAX_ANGULAR_VELOCITY
-
-    if sinal == -1:
-        wl = w
-    else:
-        wr = w
-
-    ur = vr + wr
-    ul = vl + wl
-
-    if ur != 0:
-        if ur < 50 and sinal == -1:
-            if ur < 30:
-                ur += 50
-            ur += 30
-
-    if ul != 0:
-        if ul < 50 and sinal == 1:
-            if ul < 30:
-                ul += 50
-            ul += 30
-
-    if ur > 100:
-        ur = 100
-    if ul > 100:
-        ul = 100
-
-
-    return ul, ur
+    n_vr = n_vr * ajuste_r
+    return n_vl, n_vr
 
 def main():
     robs = robo()
-
     try:
-        o_vl = 100
-        o_vr = 100
-        robs.set_velocity(0, 0)
+        robs.set_velocity(0, 0, 0, 0)
+        o_vl = 0
+        o_vr = 0
         while True:
-            _, _ , points = robs.interact()
-            print(robs.interact())
-            dl, dr, dc, dll, drr = points["-40"], points["40"], points["0"], points["-80"], points["80"]
+            robs.set_velocity(0,0,0,0)
+            _, _, points = robs.interact()
 
-            n_vl, n_vr = find_velocity(dl,dr,dc, dll, drr)
+            if points is None:
+                continue
+            print(points)
 
-
-
-            print(n_vl,n_vr)
-
-            robs.set_velocity(n_vl,n_vr)
+            n_vl, n_vr = find_velocity(points)
+            robs.set_velocity(n_vl,n_vr, o_vl, o_vr)
+            print(n_vl, n_vr)
+            o_vl = n_vl
+            o_vr = n_vr
+            time.sleep(0.5)
 
     except KeyboardInterrupt:
         robs.disconect()
